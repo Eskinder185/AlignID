@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Align ID | Professional Photo Resizing</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Basic reset and typography */
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f7f7f7;
+      color: #333;
+    }
+    /* Header styling */
+    header {
+      background: #004aad;
+      color: #ffffff;
+      padding: 1rem 2rem;
+      text-align: center;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+    header p {
+      margin: 0.25rem 0 0;
+      font-size: 0.95rem;
+    }
+    /* Layout containers */
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      padding: 1rem 2rem;
+    }
+    .controls,
+    .preview {
+      flex: 1 1 300px;
+      padding: 1rem;
+    }
+    .controls {
+      max-width: 360px;
+    }
+    /* Form inputs */
+    .controls input[type="file"],
+    .controls select,
+    .controls input[type="number"] {
+      width: 100%;
+      padding: 0.5rem;
+      margin-bottom: 0.75rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    /* Buttons */
+    .controls button {
+      display: block;
+      width: 100%;
+      padding: 0.6rem;
+      margin-bottom: 0.75rem;
+      border: none;
+      border-radius: 4px;
+      font-size: 1rem;
+      cursor: pointer;
+      color: #fff;
+    }
+    /* Button color variations */
+    .btn-primary { background: #004aad; }
+    .btn-secondary { background: #006bbd; }
+    .btn-warning { background: #f4a261; }
+    .btn-danger { background: #e76f51; }
+    /* Background selection buttons */
+    .background-options {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+    .background-options button {
+      flex: 1;
+      border: none;
+      padding: 0.5rem;
+      cursor: pointer;
+      border-radius: 4px;
+      font-weight: bold;
+      color: #333;
+    }
+    /* Preview area */
+    .preview {
+      flex: 1;
+      min-height: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    #image {
+      max-width: 100%;
+      max-height: 600px;
+      display: none;
+    }
+    /* Camera container */
+    #videoContainer {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+    }
+    video {
+      max-width: 100%;
+      border: 1px solid #ccc;
+    }
+    /* Custom options for custom preset */
+    #customOptions label {
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+    #customOptions input,
+    #customOptions select {
+      margin-top: 0.25rem;
+      width: auto;
+    }
+  </style>
+  <!-- Cropper.js styles -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.css" />
+</head>
+<body>
+  <header>
+    <h1>Align ID</h1>
+    <p>Professional Photo Resizing for Passports & IDs</p>
+  </header>
+  <div class="container">
+    <!-- Control panel -->
+    <div class="controls">
+      <input id="fileInput" type="file" accept="image/*" capture="environment" />
+      <select id="presetSelect"></select>
+      <div id="customOptions" style="display: none;">
+        <label>
+          Width:
+          <input id="customWidth" type="number" step="0.1" min="1" value="2" />
+          <select id="widthUnit">
+            <option value="in">in</option>
+            <option value="mm">mm</option>
+          </select>
+        </label>
+        <label>
+          Height:
+          <input id="customHeight" type="number" step="0.1" min="1" value="2" />
+          <select id="heightUnit">
+            <option value="in">in</option>
+            <option value="mm">mm</option>
+          </select>
+        </label>
+        <label>
+          DPI:
+          <input id="customDPI" type="number" step="1" min="50" value="300" />
+        </label>
+      </div>
+      <div class="background-options">
+        <button id="bgWhite" style="background: #ffffff;">White</button>
+        <button id="bgBlue" style="background: #d8e9ff;">Light Blue</button>
+      </div>
+      <button id="exportBtn" class="btn-primary">Export Photo</button>
+      <button id="sheetBtn" class="btn-secondary">Export 4×6 Sheet</button>
+      <button id="copyBtn" class="btn-warning">Copy to Clipboard</button>
+    </div>
+    <!-- Preview area -->
+    <div class="preview">
+      <div id="imageContainer">
+        <img id="image" />
+      </div>
+      <div id="videoContainer">
+        <video id="video" autoplay></video>
+        <button id="captureBtn" class="btn-primary">Capture</button>
+        <button id="closeCameraBtn" class="btn-danger">Close Camera</button>
+      </div>
+    </div>
+  </div>
+  <!-- Cropper.js library -->
+  <script src="https://cdn.jsdelivr.net/npm/cropperjs@1.5.13/dist/cropper.min.js"></script>
+  <script>
+    // Preset definitions with sizes and units
+    const presets = [
+      { name: "US Passport (2×2 in @300 DPI)", width: 2, height: 2, unit: "in", dpi: 300 },
+      { name: "US Visa (2×2 in @300 DPI)", width: 2, height: 2, unit: "in", dpi: 300 },
+      { name: "EU/UK (35×45 mm @600 DPI)", width: 35, height: 45, unit: "mm", dpi: 600 },
+      { name: "Canada (50×70 mm @300 DPI)", width: 50, height: 70, unit: "mm", dpi: 300 },
+      { name: "India (35×45 mm @600 DPI)", width: 35, height: 45, unit: "mm", dpi: 600 },
+      { name: "Custom Size", custom: true }
+    ];
+    // DOM elements
+    const presetSelect = document.getElementById('presetSelect');
+    const fileInput = document.getElementById('fileInput');
+    const image = document.getElementById('image');
+    const imageContainer = document.getElementById('imageContainer');
+    const videoContainer = document.getElementById('videoContainer');
+    const video = document.getElementById('video');
+    const captureBtn = document.getElementById('captureBtn');
+    const closeCameraBtn = document.getElementById('closeCameraBtn');
+    const customOptions = document.getElementById('customOptions');
+    const customWidth = document.getElementById('customWidth');
+    const customHeight = document.getElementById('customHeight');
+    const widthUnit = document.getElementById('widthUnit');
+    const heightUnit = document.getElementById('heightUnit');
+    const customDPI = document.getElementById('customDPI');
+    const bgWhiteBtn = document.getElementById('bgWhite');
+    const bgBlueBtn = document.getElementById('bgBlue');
+    const exportBtn = document.getElementById('exportBtn');
+    const sheetBtn = document.getElementById('sheetBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    // Populate preset dropdown
+    presets.forEach((p, i) => {
+      const option = document.createElement('option');
+      option.value = i;
+      option.textContent = p.name;
+      presetSelect.appendChild(option);
+    });
+    let cropper;
+    let bgColor = '#ffffff';
+    let stream;
+    // Convert units to inches
+    function toInches(value, unit) {
+      return unit === 'mm' ? value / 25.4 : value;
+    }
+    // Determine current preset dimensions
+    function getCurrentPreset() {
+      const presetIndex = parseInt(presetSelect.value, 10);
+      const preset = presets[presetIndex];
+      if (preset && !preset.custom) {
+        return {
+          widthIn: toInches(preset.width, preset.unit),
+          heightIn: toInches(preset.height, preset.unit),
+          dpi: preset.dpi
+        };
+      }
+      return {
+        widthIn: toInches(parseFloat(customWidth.value), widthUnit.value),
+        heightIn: toInches(parseFloat(customHeight.value), heightUnit.value),
+        dpi: parseInt(customDPI.value, 10)
+      };
+    }
+    // Initialize cropper instance
+    function initCropper() {
+      if (cropper) {
+        cropper.destroy();
+      }
+      cropper = new Cropper(image, {
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.8,
+        aspectRatio: getCurrentPreset().widthIn / getCurrentPreset().heightIn,
+        background: false
+      });
+    }
+    // Update aspect ratio when preset changes
+    presetSelect.addEventListener('change', () => {
+      const preset = presets[parseInt(presetSelect.value, 10)];
+      if (preset.custom) {
+        customOptions.style.display = 'block';
+      } else {
+        customOptions.style.display = 'none';
+      }
+      if (cropper) {
+        const { widthIn, heightIn } = getCurrentPreset();
+        cropper.setAspectRatio(widthIn / heightIn);
+      }
+    });
+    // Update aspect ratio when custom values change
+    [customWidth, customHeight, widthUnit, heightUnit].forEach(el => {
+      el.addEventListener('input', () => {
+        if (cropper) {
+          const { widthIn, heightIn } = getCurrentPreset();
+          cropper.setAspectRatio(widthIn / heightIn);
+        }
+      });
+    });
+    // Handle file selection
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      image.src = url;
+      image.style.display = 'block';
+      image.onload = () => {
+        initCropper();
+        imageContainer.style.display = 'block';
+        videoContainer.style.display = 'none';
+      };
+    });
+    // Background color selection
+    bgWhiteBtn.addEventListener('click', () => {
+      bgColor = '#ffffff';
+      bgWhiteBtn.style.outline = '2px solid #004aad';
+      bgBlueBtn.style.outline = '';
+    });
+    bgBlueBtn.addEventListener('click', () => {
+      bgColor = '#d8e9ff';
+      bgBlueBtn.style.outline = '2px solid #004aad';
+      bgWhiteBtn.style.outline = '';
+    });
+    // Create canvas from cropper
+    function createCroppedCanvas() {
+      if (!cropper) return null;
+      const { widthIn, heightIn, dpi } = getCurrentPreset();
+      const widthPx = Math.round(widthIn * dpi);
+      const heightPx = Math.round(heightIn * dpi);
+      return cropper.getCroppedCanvas({
+        width: widthPx,
+        height: heightPx,
+        fillColor: bgColor
+      });
+    }
+    // Export single photo
+    exportBtn.addEventListener('click', () => {
+      const canvas = createCroppedCanvas();
+      if (!canvas) return;
+      canvas.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const presetName = presets[parseInt(presetSelect.value, 10)].custom
+          ? 'custom'
+          : presets[parseInt(presetSelect.value, 10)].name.split(' ')[0];
+        const timestamp = new Date().toISOString().split('T')[0];
+        a.download = `AlignID_${presetName}_${timestamp}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/png');
+    });
+    // Export 4×6 inch sheet with multiple copies
+    sheetBtn.addEventListener('click', () => {
+      const single = createCroppedCanvas();
+      if (!single) return;
+      const { dpi } = getCurrentPreset();
+      const sheetWidth = Math.round(6 * dpi);
+      const sheetHeight = Math.round(4 * dpi);
+      const sheet = document.createElement('canvas');
+      sheet.width = sheetWidth;
+      sheet.height = sheetHeight;
+      const ctx = sheet.getContext('2d');
+      // Fill background
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, sheetWidth, sheetHeight);
+      // Determine scaling to fit 2 columns and 3 rows
+      const cropW = single.width;
+      const cropH = single.height;
+      const maxW = sheetWidth / 2;
+      const maxH = sheetHeight / 3;
+      const scale = Math.min(maxW / cropW, maxH / cropH, 1);
+      const w = cropW * scale;
+      const h = cropH * scale;
+      const marginX = (sheetWidth - w * 2) / 3;
+      const marginY = (sheetHeight - h * 3) / 4;
+      for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 2; col++) {
+          const x = marginX + col * (w + marginX);
+          const y = marginY + row * (h + marginY);
+          ctx.drawImage(single, 0, 0, cropW, cropH, x, y, w, h);
+        }
+      }
+      sheet.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        const presetName = presets[parseInt(presetSelect.value, 10)].custom
+          ? 'custom'
+          : presets[parseInt(presetSelect.value, 10)].name.split(' ')[0];
+        const timestamp = new Date().toISOString().split('T')[0];
+        a.download = `AlignID_Sheet_${presetName}_${timestamp}.jpg`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, 'image/jpeg', 0.92);
+    });
+    // Copy single image to clipboard
+    copyBtn.addEventListener('click', () => {
+      const canvas = createCroppedCanvas();
+      if (!canvas) return;
+      canvas.toBlob((blob) => {
+        const item = new ClipboardItem({ 'image/png': blob });
+        navigator.clipboard.write([item]).then(() => {
+          alert('Photo copied to clipboard!');
+        }, (err) => {
+          console.error(err);
+          alert('Failed to copy. Your browser may not support this feature.');
+        });
+      }, 'image/png');
+    });
+    // Default background selection
+    bgWhiteBtn.click();
+    // Hidden camera activation on double click
+    imageContainer.addEventListener('dblclick', () => {
+      if (stream) return;
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+        .then(mediaStream => {
+          stream = mediaStream;
+          video.srcObject = mediaStream;
+          videoContainer.style.display = 'flex';
+          imageContainer.style.display = 'none';
+        })
+        .catch(err => {
+          console.error(err);
+          alert('Unable to access camera.');
+        });
+    });
+    // Capture frame from video
+    captureBtn.addEventListener('click', () => {
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      const captureCanvas = document.createElement('canvas');
+      captureCanvas.width = videoWidth;
+      captureCanvas.height = videoHeight;
+      const ctx = captureCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0);
+      const dataUrl = captureCanvas.toDataURL('image/png');
+      image.src = dataUrl;
+      image.style.display = 'block';
+      image.onload = () => {
+        initCropper();
+        videoContainer.style.display = 'none';
+        imageContainer.style.display = 'block';
+        if (stream) {
+          stream.getTracks().forEach(track => track.stop());
+          stream = null;
+        }
+      };
+    });
+    // Close camera and return to cropping
+    closeCameraBtn.addEventListener('click', () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+      }
+      videoContainer.style.display = 'none';
+      imageContainer.style.display = 'block';
+    });
+  </script>
+</body>
+</html>
